@@ -1,0 +1,364 @@
+import React, { useEffect, useRef, useState } from 'react';
+import './App.css';
+
+const API_KEY = import.meta.env.VITE_NEWS_API_KEY;
+const MAX_PAGES_TO_FETCH = 5;
+const ARTICLES_PER_PAGE = 9;
+const validCategories = ['general', 'business', 'entertainment', 'health', 'science', 'sports', 'technology'];
+
+function getDefaultSearchTerm(category) {
+  return validCategories.includes(category) ? category : 'general';
+}
+function Index() {
+  const [category, setCategory] = useState('general');
+  const [search, setSearch] = useState('');
+  const [date, setDate] = useState('');
+  const [articles, setArticles] = useState([]);
+  const [filteredArticles, setFilteredArticles] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [listType, setListType] = useState(null);
+  const [modalArticle, setModalArticle] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [listCounts, setListCounts] = useState({ liked: 0, disliked: 0, favorites: 0 });
+  const searchInputRef = useRef();
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const cat = params.get('category') || 'general';
+    setCategory(cat);
+    setSearch('');
+    setListType(params.get('list'));
+    setCurrentPage(Number(params.get('page')) || 1);
+  }, [window.location.search]);
+  useEffect(() => {
+    const onPopState = () => {
+      const params = new URLSearchParams(window.location.search);
+      const cat = params.get('category') || 'general';
+      setCategory(cat);
+      setSearch('');
+      setListType(params.get('list'));
+      setCurrentPage(Number(params.get('page')) || 1);
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
+  useEffect(() => {
+    if (listType) {
+      const userArticles = getUserListArticles(listType);
+      setFilteredArticles(filterArticlesByDate(userArticles, date));
+      setArticles(userArticles);
+    } else {
+      setLoading(true);
+      fetchNews(search || getDefaultSearchTerm(category), date).then(fetched => {
+        setArticles(fetched);
+        setFilteredArticles(filterArticlesByDate(fetched, date));
+        setLoading(false);
+      });
+    }
+    updateListCounts();
+  }, [category, search, date, listType]);
+  function filterArticlesByDate(articles, date) {
+    if (!date) return articles.sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt));
+    const selectedDate = new Date(date);
+    const start = new Date(selectedDate.setHours(0,0,0,0));
+    const end = new Date(selectedDate.setHours(23,59,59,999));
+    return articles.filter(article => {
+      const articleDate = new Date(article.publishedAt);
+      return articleDate >= start && articleDate <= end;
+    }).sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt));
+  }
+
+  function getUserListArticles(type) {
+    const articles = [];
+    Object.keys(localStorage).forEach(key => {
+      if (key.startsWith('article_')) {
+        try {
+          const state = JSON.parse(localStorage.getItem(key));
+          const shouldInclude = type === 'liked' ? state.userLiked : 
+            type === 'disliked' ? state.userDisliked : 
+            type === 'favorites' ? state.userFavorited : false;
+          if (shouldInclude && state.articleData) {
+            articles.push(state.articleData);
+          }
+        } catch {}
+      }
+    });
+    return articles;
+  }
+
+  function updateListCounts() {
+    setListCounts({
+      liked: getUserListArticles('liked').length,
+      disliked: getUserListArticles('disliked').length,
+      favorites: getUserListArticles('favorites').length,
+    });
+  }
+  async function fetchNews(query, date) {
+    const allArticles = [];
+    const categoryMap = {
+      'general': 'general',
+      'sports': 'sports',
+      'technology': 'technology',
+      'business': 'business',
+      'entertainment': 'entertainment',
+      'health': 'health',
+      'science': 'science',
+    };
+    const cat = categoryMap[query?.toLowerCase()];
+    for (let page = 1; page <= MAX_PAGES_TO_FETCH; page++) {
+      try {
+        let apiUrl;
+        if (cat) {
+          apiUrl = `https://newsapi.org/v2/top-headlines?category=${cat}&apiKey=${API_KEY}&language=en&pageSize=100&page=${page}`;
+        } else {
+          apiUrl = `https://newsapi.org/v2/everything?q=${encodeURIComponent(query)}&apiKey=${API_KEY}&language=en&pageSize=100&page=${page}&sortBy=publishedAt`;
+        }
+        if (date) {
+          const fromDate = `${date}T00:00:00`;
+          const toDate = `${date}T23:59:59`;
+          apiUrl += `&from=${fromDate}&to=${toDate}`;
+        }
+        const res = await fetch(apiUrl);
+        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+        const data = await res.json();
+        if (data.articles && Array.isArray(data.articles)) {
+          allArticles.push(...data.articles);
+        }
+        if (data.articles.length < 100) break;
+      } catch {
+        break;
+      }
+    }
+    return allArticles;
+  }
+  const totalPages = Math.ceil(filteredArticles.length / ARTICLES_PER_PAGE);
+  const startIndex = (currentPage - 1) * ARTICLES_PER_PAGE;
+  const endIndex = Math.min(startIndex + ARTICLES_PER_PAGE, filteredArticles.length);
+  const currentPageArticles = filteredArticles.slice(startIndex, endIndex);
+  function handleCategoryClick(cat) {
+    setCategory(cat);
+    setListType(null);
+    setSearch('');
+    setCurrentPage(1);
+    const params = new URLSearchParams();
+    params.set('category', cat);
+    params.set('page', 1);
+    window.history.replaceState({}, '', `${window.location.pathname}?${params}`);
+  }
+  function handleListType(type) {
+    setListType(type);
+    setCurrentPage(1);
+    const params = new URLSearchParams();
+    params.set('list', type);
+    window.history.replaceState({}, '', `${window.location.pathname}?${params}`);
+  }
+  function handleSearchChange(e) {
+    setSearch(e.target.value);
+  }
+  function handleDateChange(e) {
+    setDate(e.target.value);
+  }
+  function handlePageChange(page) {
+    setCurrentPage(page);
+    const params = new URLSearchParams(window.location.search);
+    params.set('page', page);
+    window.history.replaceState({}, '', `${window.location.pathname}?${params}`);
+  }
+  function generateArticleId(article) {
+    const title = article.title || '';
+    const source = article.source?.name || article.source || '';
+    const combined = title + source;
+    return btoa(encodeURIComponent(combined)).replace(/[^a-zA-Z0-9]/g, '').substring(0, 20);
+  }
+  function getArticleState(articleId) {
+    const saved = localStorage.getItem(`article_${articleId}`);
+    return saved ? JSON.parse(saved) : {
+      likes: 0,
+      dislikes: 0,
+      userLiked: false,
+      userDisliked: false,
+      userFavorited: false
+    };
+  }
+  function saveArticleState(articleId, state, articleData = null) {
+    const dataToSave = {
+      ...state,
+      articleData: articleData
+    };
+    localStorage.setItem(`article_${articleId}`, JSON.stringify(dataToSave));
+  }
+  function handleAction(article, action) {
+    const articleId = generateArticleId(article);
+    const state = getArticleState(articleId);
+    let wasInList = false;
+    switch (action) {
+      case 'like':
+        wasInList = state.userLiked;
+        state.userLiked = !state.userLiked;
+        state.likes += state.userLiked ? 1 : -1;
+        if (state.userLiked && state.userDisliked) {
+          state.userDisliked = false;
+          state.dislikes -= 1;
+        }
+        break;
+      case 'dislike':
+        wasInList = state.userDisliked;
+        state.userDisliked = !state.userDisliked;
+        state.dislikes += state.userDisliked ? 1 : -1;
+        if (state.userDisliked && state.userLiked) {
+          state.userLiked = false;
+          state.likes -= 1;
+        }
+        break;
+      case 'favorite':
+        wasInList = state.userFavorited;
+        state.userFavorited = !state.userFavorited;
+        break;
+      default:
+        break;
+    }
+    saveArticleState(articleId, state, article);
+    updateListCounts();
+    if (listType) {
+      let shouldRemove = false;
+      if (listType === 'liked' && wasInList && !state.userLiked) shouldRemove = true;
+      if (listType === 'disliked' && wasInList && !state.userDisliked) shouldRemove = true;
+      if (listType === 'favorites' && wasInList && !state.userFavorited) shouldRemove = true;
+      if (shouldRemove) {
+        const newArticles = articles.filter(a => generateArticleId(a) !== articleId);
+        setArticles(newArticles);
+        setFilteredArticles(filterArticlesByDate(newArticles, date));
+      }
+    }
+  }
+  return (
+    <div className="container">
+      <header>
+        <button className="hamburger-btn" aria-label="Menu">&#9776;</button>
+        <a href="/">
+          <img src={`123.png`} alt="Logo" style={{ width: 80, height: 80 }} />
+          <h1>ABC News</h1>
+        </a>
+      </header>
+      <nav>
+        <div className="search-container">
+          <input
+            className="search"
+            type="search"
+            placeholder="Search..."
+            value={search}
+            onChange={handleSearchChange}
+            ref={searchInputRef}
+          />
+          <input
+            type="date"
+            className="date-picker"
+            value={date}
+            onChange={handleDateChange}
+          />
+          <div className="user-lists">
+            <button className={`list-btn${listType === 'liked' ? ' active' : ''}`} onClick={() => handleListType('liked')}>
+              👍 Liked ({listCounts.liked})
+            </button>
+            <button className={`list-btn${listType === 'disliked' ? ' active' : ''}`} onClick={() => handleListType('disliked')}>
+              👎 Disliked ({listCounts.disliked})
+            </button>
+            <button className={`list-btn${listType === 'favorites' ? ' active' : ''}`} onClick={() => handleListType('favorites')}>
+              ⭐ Favorites ({listCounts.favorites})
+            </button>
+          </div>
+        </div>
+        <div className="nav-links">
+          {validCategories.map(cat => (
+            <a
+              key={cat}
+              href="#"
+              className={`nav-link${category === cat ? ' active' : ''}`}
+              onClick={() => handleCategoryClick(cat)}
+            >
+              {cat.charAt(0).toUpperCase() + cat.slice(1)}
+            </a>
+          ))}
+        </div>
+      </nav>
+      <main>
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: 40 }}>
+            <h3>Loading news articles...</h3>
+            <p>Fetching multiple pages for more content...</p>
+          </div>
+        ) : filteredArticles.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: 40 }}>
+            <h3>No news articles found.</h3>
+          </div>
+        ) : (
+          <>
+            <div className="card-container">
+              {currentPageArticles.map((article, idx) => (
+                <div className="news-card" key={idx}>
+                  <img src={article.urlToImage || article.image} alt="news" />
+                  <div className="news-card-content">
+                    <h3>{article.title}</h3>
+                    <p>{article.description}</p>
+                    <h6>{(article.source?.name || article.source || 'Unknown Source') + ' • ' + (article.publishedAt ? new Date(article.publishedAt).toLocaleString('en-US', { timeZone: 'Asia/kolkata' }) : '')}</h6>
+                    <div className="card-actions">
+                      <button className="action-btn like-btn" onClick={() => handleAction(article, 'like')}>
+                        <span className="icon">👍</span>
+                        <span className="count">{getArticleState(generateArticleId(article)).likes}</span>
+                      </button>
+                      <button className="action-btn dislike-btn" onClick={() => handleAction(article, 'dislike')}>
+                        <span className="icon">👎</span>
+                        <span className="count">{getArticleState(generateArticleId(article)).dislikes}</span>
+                      </button>
+                      <button className="action-btn favorite-btn" onClick={() => handleAction(article, 'favorite')}>
+                        <span className="icon">⭐</span>
+                      </button>
+                    </div>
+                    <a href={article.url} target="_blank" rel="noopener noreferrer">Read More</a>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {totalPages > 1 && (
+              <div className="pagination-container">
+                <div className="pagination-info">
+                  <span>Showing {startIndex + 1}-{endIndex} of {filteredArticles.length} articles</span>
+                </div>
+                <div className="pagination-controls">
+                  <button className="pagination-btn" onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1}>← Previous</button>
+                  <div className="page-numbers">
+                    {Array.from({ length: totalPages }, (_, i) => (
+                      <button
+                        key={i + 1}
+                        className={`page-number${currentPage === i + 1 ? ' active' : ''}`}
+                        onClick={() => handlePageChange(i + 1)}
+                      >
+                        {i + 1}
+                      </button>
+                    ))}
+                  </div>
+                  <button className="pagination-btn" onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages}>Next →</button>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </main>
+      {modalArticle && (
+        <div className="news-modal" onClick={() => setModalArticle(null)}>
+          <div className="news-modal-content" onClick={e => e.stopPropagation()}>
+            <span className="news-modal-close" onClick={() => setModalArticle(null)}>&times;</span>
+            <img src={modalArticle.urlToImage || modalArticle.image || ''} alt="News" />
+            <h2>{modalArticle.title}</h2>
+            <h5>{(modalArticle.source?.name || modalArticle.source || '') + ' • ' + (modalArticle.publishedAt ? new Date(modalArticle.publishedAt).toLocaleString('en-US', { timeZone: 'Asia/kolkata' }) : '')}</h5>
+            <hr />
+            <p>{modalArticle.description}</p>
+            <a href={modalArticle.url} target="_blank" rel="noopener noreferrer">Read Full Article</a>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+export default Index;
+
+
