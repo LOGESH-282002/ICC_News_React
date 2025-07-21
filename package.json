@@ -9,7 +9,6 @@
     "lint": "eslint .",
     "preview": "vite preview"
   },
-  "homepage": "https://LOGESH-282002.github.io/ICC_News_React/",
   "dependencies": {
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
