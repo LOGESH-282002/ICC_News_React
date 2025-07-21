@@ -294,26 +294,26 @@ function Index() {
           <>
             <div className="card-container">
               {currentPageArticles.map((article, idx) => (
-                <div className="news-card" key={idx}>
+                <div className="news-card" key={idx} onClick={() => { console.log('Card clicked', article); setModalArticle(article); }}>
                   <img src={article.urlToImage || article.image} alt="news" />
                   <div className="news-card-content">
                     <h3>{article.title}</h3>
                     <p>{article.description}</p>
                     <h6>{(article.source?.name || article.source || 'Unknown Source') + ' • ' + (article.publishedAt ? new Date(article.publishedAt).toLocaleString('en-US', { timeZone: 'Asia/kolkata' }) : '')}</h6>
                     <div className="card-actions">
-                      <button className="action-btn like-btn" onClick={() => handleAction(article, 'like')}>
+                      <button className="action-btn like-btn" onClick={e => { e.stopPropagation(); handleAction(article, 'like'); }}>
                         <span className="icon">👍</span>
                         <span className="count">{getArticleState(generateArticleId(article)).likes}</span>
                       </button>
-                      <button className="action-btn dislike-btn" onClick={() => handleAction(article, 'dislike')}>
+                      <button className="action-btn dislike-btn" onClick={e => { e.stopPropagation(); handleAction(article, 'dislike'); }}>
                         <span className="icon">👎</span>
                         <span className="count">{getArticleState(generateArticleId(article)).dislikes}</span>
                       </button>
-                      <button className="action-btn favorite-btn" onClick={() => handleAction(article, 'favorite')}>
+                      <button className="action-btn favorite-btn" onClick={e => { e.stopPropagation(); handleAction(article, 'favorite'); }}>
                         <span className="icon">⭐</span>
                       </button>
                     </div>
-                    <a href={article.url} target="_blank" rel="noopener noreferrer">Read More</a>
+                    <a href={article.url} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}>Read More</a>
                   </div>
                 </div>
               ))}

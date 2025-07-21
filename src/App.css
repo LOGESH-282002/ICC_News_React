@@ -395,7 +395,9 @@
   }
   
   .news-modal {
-    display: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     position: fixed;
     top: 0;
     left: 0;
@@ -481,6 +483,16 @@
     text-decoration: none;
     transform: translateY(-2px);
     box-shadow: 0 4px 8px rgba(26, 115, 232, 0.3);
+  }
+  
+  .news-modal-content img {
+    width: 100%;
+    max-width: 600px;
+    height: auto;
+    display: block;
+    margin: 0 auto 25px auto;
+    border-radius: var(--border-radius);
+    border: 1px solid #dfe1e5;
   }
   
   @media (max-width: 1024px) {
