@@ -23,6 +23,9 @@ function Index() {
   const searchInputRef = useRef();
   const hamburgerRef = useRef();
   const navRef = useRef();
+
+  console.log(articles);
+  
   useEffect(() => {
     if (navOpen) {
       document.body.classList.add('no-scroll');
@@ -168,7 +171,7 @@ function Index() {
     setListType(null);
     setSearch('');
     setCurrentPage(1);
-    setNavOpen(false); // Close nav on click
+    setNavOpen(false);
     const params = new URLSearchParams();
     params.set('category', cat);
     params.set('page', 1);
@@ -241,6 +244,7 @@ function Index() {
         break;
       case 'favorite':
         wasInList = state.userFavorited;
+        console.log(wasInList);
         state.userFavorited = !state.userFavorited;
         break;
       default:

@@ -1,4 +1,3 @@
-/* Prevent background scroll when nav is open */
 .no-scroll {
   overflow: hidden !important;
   position: fixed;
@@ -35,6 +34,9 @@
   .container {
     max-width: 1400px;
     margin: 0 auto;
+  }
+
+  main{
     padding: 0 20px;
   }
   
@@ -43,7 +45,6 @@
     align-items: center;
     justify-content: flex-start;
     gap: 15px;
-    padding: 25px 0;
     margin-bottom: 30px;
     background: var(--header-gradient);
     color: white;
@@ -592,7 +593,7 @@
   
     .nav-links {
       position: absolute;
-      top: -60px;
+      top: -40px;
       left: 0;
       width: 100%;
       background: white;
