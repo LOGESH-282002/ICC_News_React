@@ -19,8 +19,34 @@ function Index() {
   const [modalArticle, setModalArticle] = useState(null);
   const [loading, setLoading] = useState(false);
   const [listCounts, setListCounts] = useState({ liked: 0, disliked: 0, favorites: 0 });
-  const [navOpen, setNavOpen] = useState(false); // Hamburger menu state
+  const [navOpen, setNavOpen] = useState(false);
   const searchInputRef = useRef();
+  const hamburgerRef = useRef();
+  const navRef = useRef();
+  useEffect(() => {
+    if (navOpen) {
+      document.body.classList.add('no-scroll');
+    } else {
+      document.body.classList.remove('no-scroll');
+    }
+    return () => {
+      document.body.classList.remove('no-scroll');
+    };
+  }, [navOpen]);
+  useEffect(() => {
+    if (!navOpen) return;
+    function handleClick(e) {
+      if (
+        hamburgerRef.current && hamburgerRef.current.contains(e.target)
+      ) return;
+      if (
+        navRef.current && navRef.current.contains(e.target)
+      ) return;
+      setNavOpen(false);
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [navOpen]);
   const updateListCounts = useCallback(() => {
     setListCounts({
       liked: getUserListArticles('liked').length,
@@ -223,33 +249,30 @@ function Index() {
     saveArticleState(articleId, state, article);
     updateListCounts();
     if (listType) {
-      let shouldRemove = false;
-      if (listType === 'liked' && wasInList && !state.userLiked) shouldRemove =true;   
-      if (listType === 'disliked' && wasInList && !state.userDisliked) shouldRemove = true;
-      if (listType === 'favorites' && wasInList && !state.userFavorited) shouldRemove = true;
-      if (shouldRemove) {
-        const newArticles = articles.filter(a => generateArticleId(a) !== articleId);
-        setArticles(newArticles);
-        setFilteredArticles(filterArticlesByDate(newArticles, date));
-      }
+      const userArticles = getUserListArticles(listType);
+      setArticles(userArticles);
+      setFilteredArticles(filterArticlesByDate(userArticles, date));
     }
   }
   return (
     <div className="container">
       <header>
         <button
+          ref={hamburgerRef}
           className={`hamburger-btn${navOpen ? ' open' : ''}`}
           aria-label="Menu"
           onClick={() => setNavOpen((open) => !open)}
         >
-          &#9776;
+          <span className="hamburger-bar"></span>
+          <span className="hamburger-bar"></span>
+          <span className="hamburger-bar"></span>
         </button>
         <a href="/">
           <img src={`123.png`} alt="Logo" style={{ width: 80, height: 80 }} />
           <h1>ABC News</h1>
         </a>
       </header>
-      <nav className={navOpen ? 'nav-open' : ''}>
+      <nav ref={navRef} className={navOpen ? 'nav-open' : ''}>
         <div className="search-container">
           <input
             className="search"
@@ -311,15 +334,24 @@ function Index() {
                     <p>{article.description}</p>
                     <h6>{(article.source?.name || article.source || 'Unknown Source') + ' • ' + (article.publishedAt ? new Date(article.publishedAt).toLocaleString('en-US', { timeZone: 'Asia/kolkata' }) : '')}</h6>
                     <div className="card-actions">
-                      <button className="action-btn like-btn" onClick={e => { e.stopPropagation(); handleAction(article, 'like'); }}>
+                      <button
+                        className={`action-btn like-btn${getArticleState(generateArticleId(article)).userLiked ? ' liked' : ''}`}
+                        onClick={e => { e.stopPropagation(); handleAction(article, 'like'); }}
+                      >
                         <span className="icon">👍</span>
                         <span className="count">{getArticleState(generateArticleId(article)).likes}</span>
                       </button>
-                      <button className="action-btn dislike-btn" onClick={e => { e.stopPropagation(); handleAction(article, 'dislike'); }}>
+                      <button
+                        className={`action-btn dislike-btn${getArticleState(generateArticleId(article)).userDisliked ? ' disliked' : ''}`}
+                        onClick={e => { e.stopPropagation(); handleAction(article, 'dislike'); }}
+                      >
                         <span className="icon">👎</span>
                         <span className="count">{getArticleState(generateArticleId(article)).dislikes}</span>
                       </button>
-                      <button className="action-btn favorite-btn" onClick={e => { e.stopPropagation(); handleAction(article, 'favorite'); }}>
+                      <button
+                        className={`action-btn favorite-btn${getArticleState(generateArticleId(article)).userFavorited ? ' favorited' : ''}`}
+                        onClick={e => { e.stopPropagation(); handleAction(article, 'favorite'); }}
+                      >
                         <span className="icon">⭐</span>
                       </button>
                     </div>

@@ -1,3 +1,9 @@
+/* Prevent background scroll when nav is open */
+.no-scroll {
+  overflow: hidden !important;
+  position: fixed;
+  width: 100vw;
+}
 :root {
     --primary-color: #1a73e8;
     --secondary-color: #34a853;
@@ -196,22 +202,54 @@
     border-color: var(--accent-color);
   }
   
+/* Modern Hamburger Button */
+.hamburger-btn {
+  display: none;
+  background: transparent;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  padding: 10px;
+  margin-left: 15px;
+  position: relative;
+  z-index: 100;
+  width: 44px;
+  height: 44px;
+  box-shadow: none;
+  transition: background 0.2s;
+}
+
+.hamburger-btn .hamburger-bar {
+  display: block;
+  width: 28px;
+  height: 3px;
+  margin: 5px auto;
+  background-color: white;
+  border-radius: 2px;
+  transition: all 0.3s cubic-bezier(.4,2,.3,1);
+}
+
+.hamburger-btn.open .hamburger-bar:nth-child(1) {
+  transform: translateY(8px) rotate(45deg);
+  background-color: #ea4335;
+}
+.hamburger-btn.open .hamburger-bar:nth-child(2) {
+  opacity: 0;
+}
+.hamburger-btn.open .hamburger-bar:nth-child(3) {
+  transform: translateY(-8px) rotate(-45deg);
+  background-color: #ea4335;
+}
+
+.hamburger-btn:focus {
+  outline: 2px solid #1a73e8;
+}
+
+@media (max-width: 768px) {
   .hamburger-btn {
-    display: none;
-    background: #0d5bd1;
-    border: 1px solid #dfe1e5;
-    border-radius: var(--border-radius);
-    font-size: 1.5rem;
-    cursor: pointer;
-    color: #0d5bd1;
-    padding: 8px 15px;
-    box-shadow: var(--shadow);
-    transition: var(--transition);
+    display: block;
   }
-  
-  .hamburger-btn:hover {
-    background-color: #0d5bd1;
-  }
+}
   
   .card-container {
     display: grid;
@@ -302,20 +340,38 @@
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   }
   
-  .like-btn:hover {
-    color: var(--secondary-color);
-    border-color: var(--secondary-color);
-  }
+
+.like-btn.liked,
+.like-btn.liked .icon {
+  color: var(--secondary-color) !important;
+  border-color: var(--secondary-color) !important;
+}
+.like-btn:hover {
+  color: var(--secondary-color);
+  border-color: var(--secondary-color);
+}
+
+.dislike-btn.disliked,
+.dislike-btn.disliked .icon {
+  color: var(--danger-color) !important;
+  border-color: var(--danger-color) !important;
+}
+.dislike-btn:hover {
+  color: var(--danger-color);
+  border-color: var(--danger-color);
+}
   
-  .dislike-btn:hover {
-    color: var(--danger-color);
-    border-color: var(--danger-color);
-  }
-  
-  .favorite-btn:hover {
-    color: var(--accent-color);
-    border-color: var(--accent-color);
-  }
+
+.favorite-btn.favorited,
+.favorite-btn.favorited .icon {
+  color: var(--accent-color) !important;
+  border-color: var(--accent-color) !important;
+}
+
+.favorite-btn:hover {
+  color: var(--accent-color);
+  border-color: var(--accent-color);
+}
   
   .news-card-content a {
     color: var(--primary-color);
@@ -536,22 +592,27 @@
   
     .nav-links {
       position: absolute;
-      top: 0;
+      top: -60px;
       left: 0;
       width: 100%;
       background: white;
       z-index: 10;
       box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      display: none;
+      display: flex;
       flex-direction: column;
       gap: 0;
-      max-height: none;
-      overflow: visible;
-      transition: none;
+      max-height: 0;
+      opacity: 0;
+      overflow: hidden;
+      pointer-events: none;
+      transition: max-height 0.4s cubic-bezier(.4,2,.3,1), opacity 0.3s cubic-bezier(.4,2,.3,1);
     }
 
     nav.nav-open .nav-links {
-      display: flex;
+      max-height: 500px;
+      opacity: 1;
+      pointer-events: auto;
+      transition: max-height 0.5s cubic-bezier(.4,2,.3,1), opacity 0.3s cubic-bezier(.4,2,.3,1);
     }
   
     .search-container {
