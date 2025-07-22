@@ -1,8 +1,7 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import './App.css';
 
-const API_KEY = import.meta.env.VITE_NEWS_API_KEY;
-const MAX_PAGES_TO_FETCH = 5;
+const API_KEY = import.meta.env.VITE_GNEWS_API_KEY;
 const ARTICLES_PER_PAGE = 9;
 const validCategories = ['general', 'business', 'entertainment', 'health', 'science', 'sports', 'technology'];
 
@@ -21,6 +20,13 @@ function Index() {
   const [loading, setLoading] = useState(false);
   const [listCounts, setListCounts] = useState({ liked: 0, disliked: 0, favorites: 0 });
   const searchInputRef = useRef();
+  const updateListCounts = useCallback(() => {
+    setListCounts({
+      liked: getUserListArticles('liked').length,
+      disliked: getUserListArticles('disliked').length,
+      favorites: getUserListArticles('favorites').length,
+    });
+  }, []);
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const cat = params.get('category') || 'general';
@@ -28,7 +34,7 @@ function Index() {
     setSearch('');
     setListType(params.get('list'));
     setCurrentPage(Number(params.get('page')) || 1);
-  }, [window.location.search]);
+  }, []);
   useEffect(() => {
     const onPopState = () => {
       const params = new URLSearchParams(window.location.search);
@@ -55,7 +61,7 @@ function Index() {
       });
     }
     updateListCounts();
-  }, [category, search, date, listType]);
+  }, [category, search, date, listType, updateListCounts]);
   function filterArticlesByDate(articles, date) {
     if (!date) return articles.sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt));
     const selectedDate = new Date(date);
@@ -66,7 +72,6 @@ function Index() {
       return articleDate >= start && articleDate <= end;
     }).sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt));
   }
-
   function getUserListArticles(type) {
     const articles = [];
     Object.keys(localStorage).forEach(key => {
@@ -79,21 +84,13 @@ function Index() {
           if (shouldInclude && state.articleData) {
             articles.push(state.articleData);
           }
-        } catch {}
+        } catch { /**/ }
       }
     });
     return articles;
   }
-
-  function updateListCounts() {
-    setListCounts({
-      liked: getUserListArticles('liked').length,
-      disliked: getUserListArticles('disliked').length,
-      favorites: getUserListArticles('favorites').length,
-    });
-  }
   async function fetchNews(query, date) {
-    const allArticles = [];
+    let allArticles = [];
     const categoryMap = {
       'general': 'general',
       'sports': 'sports',
@@ -104,30 +101,38 @@ function Index() {
       'science': 'science',
     };
     const cat = categoryMap[query?.toLowerCase()];
-    for (let page = 1; page <= MAX_PAGES_TO_FETCH; page++) {
-      try {
-        let apiUrl;
-        if (cat) {
-          apiUrl = `https://newsapi.org/v2/top-headlines?category=${cat}&apiKey=${API_KEY}&language=en&pageSize=100&page=${page}`;
-        } else {
-          apiUrl = `https://newsapi.org/v2/everything?q=${encodeURIComponent(query)}&apiKey=${API_KEY}&language=en&pageSize=100&page=${page}&sortBy=publishedAt`;
-        }
-        if (date) {
-          const fromDate = `${date}T00:00:00`;
-          const toDate = `${date}T23:59:59`;
-          apiUrl += `&from=${fromDate}&to=${toDate}`;
-        }
-        const res = await fetch(apiUrl);
-        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-        const data = await res.json();
-        if (data.articles && Array.isArray(data.articles)) {
-          allArticles.push(...data.articles);
-        }
-        if (data.articles.length < 100) break;
-      } catch {
-        break;
+
+    try {
+      let apiUrl;
+      if (cat) {
+        apiUrl = `https://gnews.io/api/v4/top-headlines?category=${cat}&apikey=${API_KEY}&lang=en&country=us`;
+      } else {
+        apiUrl = `https://gnews.io/api/v4/search?q=${encodeURIComponent(query)}&apikey=${API_KEY}&lang=en&country=us`;
       }
+
+      if (date) {
+        // gnews requires UTC format: YYYY-MM-DDTHH:MM:SSZ
+        const fromDate = `${date}T00:00:00Z`;
+        const toDate = `${date}T23:59:59Z`;
+        apiUrl += `&from=${fromDate}&to=${toDate}`;
+      }
+
+      const res = await fetch(apiUrl);
+      if (!res.ok) {
+        // GNews API returns errors in the response body
+        const errorData = await res.json();
+        throw new Error(`HTTP error! status: ${res.status}, message: ${errorData.errors.join(', ')}`);
+      }
+      
+      const data = await res.json();
+      if (data.articles && Array.isArray(data.articles)) {
+        allArticles = data.articles;
+      }
+    } catch (error) {
+      console.error("Failed to fetch news:", error);
+      // We can also set an error state here to show in the UI
     }
+    
     return allArticles;
   }
   const totalPages = Math.ceil(filteredArticles.length / ARTICLES_PER_PAGE);
@@ -220,7 +225,7 @@ function Index() {
     updateListCounts();
     if (listType) {
       let shouldRemove = false;
-      if (listType === 'liked' && wasInList && !state.userLiked) shouldRemove = true;
+      if (listType === 'liked' && wasInList && !state.userLiked) shouldRemove =true;   
       if (listType === 'disliked' && wasInList && !state.userDisliked) shouldRemove = true;
       if (listType === 'favorites' && wasInList && !state.userFavorited) shouldRemove = true;
       if (shouldRemove) {
@@ -295,7 +300,7 @@ function Index() {
             <div className="card-container">
               {currentPageArticles.map((article, idx) => (
                 <div className="news-card" key={idx} onClick={() => { console.log('Card clicked', article); setModalArticle(article); }}>
-                  <img src={article.urlToImage || article.image} alt="news" />
+                  <img src={article.image} alt="news" />
                   <div className="news-card-content">
                     <h3>{article.title}</h3>
                     <p>{article.description}</p>
@@ -347,7 +352,7 @@ function Index() {
         <div className="news-modal" onClick={() => setModalArticle(null)}>
           <div className="news-modal-content" onClick={e => e.stopPropagation()}>
             <span className="news-modal-close" onClick={() => setModalArticle(null)}>&times;</span>
-            <img src={modalArticle.urlToImage || modalArticle.image || ''} alt="News" />
+            <img src={modalArticle.image || ''} alt="News" />
             <h2>{modalArticle.title}</h2>
             <h5>{(modalArticle.source?.name || modalArticle.source || '') + ' • ' + (modalArticle.publishedAt ? new Date(modalArticle.publishedAt).toLocaleString('en-US', { timeZone: 'Asia/kolkata' }) : '')}</h5>
             <hr />
