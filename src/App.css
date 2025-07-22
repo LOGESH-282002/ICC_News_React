@@ -652,10 +652,6 @@
   }
   
   @media (max-width: 480px) {
-    .container {
-      padding: 0 15px;
-    }
-  
     .search-container{
       padding-left: 0px;
       padding-right: 0px;
