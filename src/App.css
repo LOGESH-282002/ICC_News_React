@@ -549,8 +549,8 @@
       overflow: visible;
       transition: none;
     }
-  
-    .nav-links.open {
+
+    nav.nav-open .nav-links {
       display: flex;
     }
   

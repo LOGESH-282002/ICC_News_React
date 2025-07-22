@@ -19,6 +19,7 @@ function Index() {
   const [modalArticle, setModalArticle] = useState(null);
   const [loading, setLoading] = useState(false);
   const [listCounts, setListCounts] = useState({ liked: 0, disliked: 0, favorites: 0 });
+  const [navOpen, setNavOpen] = useState(false); // Hamburger menu state
   const searchInputRef = useRef();
   const updateListCounts = useCallback(() => {
     setListCounts({
@@ -111,7 +112,6 @@ function Index() {
       }
 
       if (date) {
-        // gnews requires UTC format: YYYY-MM-DDTHH:MM:SSZ
         const fromDate = `${date}T00:00:00Z`;
         const toDate = `${date}T23:59:59Z`;
         apiUrl += `&from=${fromDate}&to=${toDate}`;
@@ -119,7 +119,6 @@ function Index() {
 
       const res = await fetch(apiUrl);
       if (!res.ok) {
-        // GNews API returns errors in the response body
         const errorData = await res.json();
         throw new Error(`HTTP error! status: ${res.status}, message: ${errorData.errors.join(', ')}`);
       }
@@ -130,7 +129,6 @@ function Index() {
       }
     } catch (error) {
       console.error("Failed to fetch news:", error);
-      // We can also set an error state here to show in the UI
     }
     
     return allArticles;
@@ -144,6 +142,7 @@ function Index() {
     setListType(null);
     setSearch('');
     setCurrentPage(1);
+    setNavOpen(false); // Close nav on click
     const params = new URLSearchParams();
     params.set('category', cat);
     params.set('page', 1);
@@ -238,13 +237,19 @@ function Index() {
   return (
     <div className="container">
       <header>
-        <button className="hamburger-btn" aria-label="Menu">&#9776;</button>
+        <button
+          className={`hamburger-btn${navOpen ? ' open' : ''}`}
+          aria-label="Menu"
+          onClick={() => setNavOpen((open) => !open)}
+        >
+          &#9776;
+        </button>
         <a href="/">
           <img src={`123.png`} alt="Logo" style={{ width: 80, height: 80 }} />
           <h1>ABC News</h1>
         </a>
       </header>
-      <nav>
+      <nav className={navOpen ? 'nav-open' : ''}>
         <div className="search-container">
           <input
             className="search"
